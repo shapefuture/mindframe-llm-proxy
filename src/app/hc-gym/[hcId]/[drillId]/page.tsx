@@ -20,7 +20,7 @@ import { gamificationService } from '@/lib/gamificationService'; // Ensure this 
 import { mindframeStore } from '@/lib/MindframeStore'; // Ensure this path is correct
 
 interface DrillPageProps {
-  pageProps: { hcId: string; drillId: string };
+  params: { hcId: string; drillId: string };
   // searchParams?: { [key: string]: string | string[] | undefined }; // Next.js app router passes searchParams
 }
 
