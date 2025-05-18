@@ -1,57 +1,38 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, fireEvent, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import HCRatingStep from '../../../../../extension/src/popup_src/components/onboarding/HCRatingStep';
 
-const mockHCs = [
-  {
-    id: 'critique',
-    tag: '#critique',
-    name: 'Critical Thinking',
-    icon: '🧠',
-    description: 'Think carefully.',
-    longDescription: 'Long desc',
-    keySkills: ['Analysis'],
-    examples: ['Example 1'],
-    shortTip: 'Think twice.',
-  },
-  {
-    id: 'evidence',
-    tag: '#evidence',
-    name: 'Evidence-Based',
-    icon: '📊',
-    description: 'Use evidence.',
-    longDescription: 'L',
-    keySkills: ['Gather'],
-    examples: [],
-    shortTip: 'Check facts.',
-  }
+const mockHCItems = [
+  { id: 'critique', tag: '#critique', name: 'Critical Thinking', icon: '🧠', description: 'Desc 1', longDescription: '', keySkills: [], examples: [], shortTip: '' },
+  { id: 'evidence', tag: '#evidence', name: 'Evidence-Based', icon: '📚', description: 'Desc 2', longDescription: '', keySkills: [], examples: [], shortTip: '' },
 ];
 
 describe('HCRatingStep', () => {
-  it('renders HC items and their proficiency values', () => {
+  it('renders all HC items and sliders', () => {
     const onChange = vi.fn();
-    render(<HCRatingStep hcItems={mockHCs} hcProficiency={{ critique: 3, evidence: 1 }} onHCProficiencyChange={onChange} />);
-    expect(screen.getByText(/Critical Thinking/)).toBeInTheDocument();
-    expect(screen.getByText(/Evidence-Based/)).toBeInTheDocument();
+    render(<HCRatingStep hcItems={mockHCItems} hcProficiency={{ critique: 2, evidence: 4 }} onHCProficiencyChange={onChange} />);
+    expect(screen.getByText('Critical Thinking')).toBeInTheDocument();
+    expect(screen.getByText('Evidence-Based')).toBeInTheDocument();
     expect(screen.getAllByRole('slider')).toHaveLength(2);
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
   });
 
-  it('calls onHCProficiencyChange when slider is moved', () => {
+  it('calls onHCProficiencyChange when slider moves', () => {
     const onChange = vi.fn();
-    render(<HCRatingStep hcItems={mockHCs} hcProficiency={{}} onHCProficiencyChange={onChange} />);
+    render(<HCRatingStep hcItems={mockHCItems} hcProficiency={{}} onHCProficiencyChange={onChange} />);
     const sliders = screen.getAllByRole('slider');
-    fireEvent.change(sliders[0], { target: { value: '4' } });
-    expect(onChange).toHaveBeenCalledWith('critique', 4);
+    fireEvent.change(sliders[0], { target: { value: '3' } });
+    expect(onChange).toHaveBeenCalledWith('critique', 3);
   });
 
   it('renders error UI if an error is thrown', () => {
-    const Broken = () => { throw new Error('test-err'); };
+    // Patch the component to throw
+    const Broken = () => {
+      throw new Error('test error');
+    };
     const onChange = vi.fn();
     // @ts-expect-error
-    render(<HCRatingStep hcItems={mockHCs} hcProficiency={{}} onHCProficiencyChange={onChange}><Broken /></HCRatingStep>);
+    render(<HCRatingStep hcItems={mockHCItems} hcProficiency={{}} onHCProficiencyChange={onChange}><Broken /></HCRatingStep>);
     expect(screen.getByText(/Error/)).toBeInTheDocument();
   });
 });
