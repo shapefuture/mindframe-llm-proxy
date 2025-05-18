@@ -1,5 +1,4 @@
 
-// Stub for HCRatingStep.tsx
 import React from 'react';
 import type { HCData } from '@core_logic/types';
 

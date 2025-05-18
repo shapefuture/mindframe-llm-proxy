@@ -1,5 +1,4 @@
 
-// Stub for CognitiveMirrorStep.tsx
 import React from 'react';
 import type { CognitiveProfileV1 } from '@core_logic/types';
 

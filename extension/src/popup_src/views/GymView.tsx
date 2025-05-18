@@ -1,5 +1,4 @@
 
-// Stub for GymView.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { hcLibraryData } from '@assets/data/hc_library_data';

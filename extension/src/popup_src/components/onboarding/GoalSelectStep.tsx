@@ -1,5 +1,4 @@
 
-// Stub for GoalSelectStep.tsx
 import React from 'react';
 
 interface GoalOption {

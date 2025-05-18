@@ -1,5 +1,4 @@
 
-// Stub for SJTStep.tsx
 import React from 'react';
 import type { SJTScenario } from '@core_logic/types';
 
