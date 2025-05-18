@@ -12,12 +12,12 @@ import { commonOfflineInsightsData } from '@assets/data/common_offline_insights_
 console.log("Mindframe OS Service Worker Active (v2.1 - Enhanced with Env Var).");
 
 // --- Configuration ---
-// The actual URL will be injected by Vite during the build process
-const LLM_PROXY_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL || 'YOUR_CLOUDFLARE_WORKER_URL_PLACEHOLDER/api/analyze';
-const DEFAULT_FALLBACK_URL_MESSAGE = 'YOUR_CLOUDFLARE_WORKER_URL_PLACEHOLDER/api/analyze';
+// The actual URL must be injected by Vite during the build process
+const LLM_PROXY_URL = import.meta.env.VITE_CLOUDFLARE_WORKER_URL;
 
-if (LLM_PROXY_URL === DEFAULT_FALLBACK_URL_MESSAGE) {
-  console.warn("Mindframe SW: LLM_PROXY_URL is using the default placeholder. Please ensure VITE_CLOUDFLARE_WORKER_URL is set in your .env file and Vite is configured correctly.");
+if (!LLM_PROXY_URL || typeof LLM_PROXY_URL !== "string" || LLM_PROXY_URL.trim() === "") {
+  // In production, fail fast and loudly if not configured
+  throw new Error("Mindframe SW: LLM_PROXY_URL is not set. Please configure VITE_CLOUDFLARE_WORKER_URL in your .env file and ensure Vite is injecting it correctly.");
 }
 
 
@@ -210,11 +210,7 @@ async function handleAnalyzeText(payload: { visibleText: string; pageUrl: string
     return { status: "offline_fallback" };
   }
 
-  if (LLM_PROXY_URL === DEFAULT_FALLBACK_URL_MESSAGE || !LLM_PROXY_URL) {
-    console.warn(`Mindframe SW: LLM_PROXY_URL is not configured or is the placeholder ('${LLM_PROXY_URL}'). Skipping LLM call and sending offline insight as fallback. Please set VITE_CLOUDFLARE_WORKER_URL in your .env file.`);
-    sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
-    return { status: "llm_proxy_unconfigured_fallback" };
-  }
+  // No need for this check anymore, as invalid config will now throw on startup
 
   try {
     console.log("Mindframe SW: Calling LLM proxy for new analysis. URL:", LLM_PROXY_URL);
