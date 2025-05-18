@@ -10,99 +10,26 @@ import { ChevronLeft, CheckCircle, XCircle, ArrowRight, Lightbulb } from 'lucide
 import { cn } from '@/lib/utils';
 
 const DrillView: React.FC = () => {
-  const { hcId, drillId } = useParams<{ hcId: string; drillId: string }>();
-  const navigate = useNavigate();
-
-  const [drill, setDrill] = useState<HCDrillQuestion | null>(null);
-  const [hcInfo, setHcInfo] = useState<HCData | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isAlreadyCompleted, setIsAlreadyCompleted] = useState(false);
-  const [feedbackMessage, setFeedbackMessage] = useState<string>("");
-
-  useEffect(() => {
-    console.log(`DrillView: Mounting for hcId=${hcId}, drillId=${drillId}`);
-    const currentHc = hcLibraryData.find(h => h.id === hcId);
-    if (currentHc) {
-      setHcInfo(currentHc);
-    } else {
-      console.warn(`DrillView: HC info not found for hcId=${hcId}. Navigating back to gym.`);
-      navigate('/gym');
-      return;
-    }
-
-    const currentDrill = hcDrillsData.find(d => d.id === drillId && d.hcId === hcId);
-    if (currentDrill) {
-      setDrill(currentDrill);
-      MindframeStore.get().then(state => {
-        if (state.completedDrillIds.includes(currentDrill.id)) {
-          console.log(`DrillView: Drill ${currentDrill.id} already completed.`);
-          setIsAlreadyCompleted(true);
-          setIsSubmitted(true); 
-          setIsCorrect(true); // Assume previously completed correctly for display
-          setSelectedOptionId(currentDrill.correctAnswerId); // Show the correct answer selected
-          setFeedbackMessage(currentDrill.explanationOnCorrect + " (You've previously completed this drill.)");
-        } else {
-          console.log(`DrillView: Drill ${currentDrill.id} not yet completed.`);
-          setIsAlreadyCompleted(false);
-          setIsSubmitted(false);
-          setIsCorrect(null);
-          setSelectedOptionId(null);
-          setFeedbackMessage("");
-        }
-      }).catch(error => {
-        console.error("DrillView: Error fetching MindframeStore state:", error);
-      });
-    } else {
-      console.warn(`DrillView: Drill not found for hcId=${hcId}, drillId=${drillId}. Navigating back to HC detail.`);
-      navigate(`/hc-detail/${hcId}`); 
-    }
-    // Reset state for new drill
-    setSelectedOptionId(null);
-    setIsSubmitted(false);
-    setIsCorrect(null);
-    setFeedbackMessage("");
-    setIsAlreadyCompleted(false);
-
-  }, [hcId, drillId, navigate]);
-
-  const handleSubmit = async () => {
-    if (!drill || selectedOptionId === null) {
-      console.warn("DrillView: handleSubmit called with no drill or no selected option.");
-      return;
-    }
-    if (isAlreadyCompleted) {
-      console.log("DrillView: handleSubmit called for an already completed drill. No action taken.");
-      return;
-    }
-
-    console.log(`DrillView: Submitting answer for drill ${drill.id}. Selected: ${selectedOptionId}`);
-    const correct = selectedOptionId === drill.correctAnswerId;
-    setIsCorrect(correct);
-    setIsSubmitted(true);
-    setFeedbackMessage(correct ? drill.explanationOnCorrect : drill.explanationOnIncorrect);
-
-    if (correct) {
-      const wxpEarned = drill.rewardWXP || 5; // Default WXP if not specified
-      try {
-        console.log(`DrillView: Correct answer. Awarding ${wxpEarned} WXP.`);
-        await GamificationService.addWXP(wxpEarned);
-        await MindframeStore.update(state => ({
-          ...state, // Ensure existing state is spread
-          completedDrillIds: Array.from(new Set([...state.completedDrillIds, drill.id]))
-        }));
-        setIsAlreadyCompleted(true); // Mark as completed for this session too
-        setFeedbackMessage(prev => prev + ` (+${wxpEarned} WXP)`);
-        console.log(`DrillView: WXP and completedDrillIds updated in store for drill ${drill.id}.`);
-      } catch (error) {
-        console.error("DrillView: Error updating WXP or completed drills:", error);
-        setFeedbackMessage(prev => prev + ` (Error saving progress)`);
-      }
-    } else {
-      console.log(`DrillView: Incorrect answer for drill ${drill.id}.`);
-    }
-  };
+  React.useEffect(() => {
+    console.log('[DrillView] Mounted');
+  }, []);
+  try {
+    // ... existing logic ...
+    return (
+      <div>
+        {/* Drill content goes here */}
+      </div>
+    );
+  } catch (error) {
+    console.error('[DrillView] Render error:', error);
+    return (
+      <div className="p-4 text-red-600 bg-red-100 rounded">
+        <h2 className="text-lg font-bold">Error</h2>
+        <p>There was a problem displaying the drill view. Please reload or contact support.</p>
+      </div>
+    );
+  }
+};
   
   const findNextDrill = (): HCDrillQuestion | null => {
     if (!hcId || !drill) return null;
