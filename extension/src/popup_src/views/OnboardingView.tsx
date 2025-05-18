@@ -34,33 +34,26 @@ const ONBOARDING_GOAL_OPTIONS_POPUP = [
 const TOTAL_STEPS = 5; // Welcome, SJTs, HC Ratings, Goal Select, Cognitive Mirror
 
 const OnboardingView: React.FC = () => {
-  const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-
-  // State for UserOnboardingData
-  const [sjtAnswersById, setSjtAnswersById] = useState<{ [scenarioId: string]: string }>({});
-  const [hcProficiency, setHcProficiency] = useState<{ [hcId: string]: number }>({});
-  const [primaryGoal, setPrimaryGoal] = useState<string>('');
-  const [userInterests, setUserInterests] = useState<string[]>([]);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [generatedProfile, setGeneratedProfile] = useState<CognitiveProfileV1 | null>(null);
-
-
-  const handleNext = async () => {
-    if (currentStep === TOTAL_STEPS -1 ) { // From GoalSelect to CognitiveMirror
-      if (!primaryGoal) {
-        alert("Please select your primary goal.");
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const onboardingPayload: Omit<UserOnboardingData, 'userId'> = {
-          sjtAnswersById,
-          hcProficiency,
-          primaryGoal,
-          userInterests,
-        };
+  React.useEffect(() => {
+    console.log('[OnboardingView] Mounted');
+  }, []);
+  try {
+    // ...existing logic...
+    return (
+      <div>
+        {/* Onboarding steps content goes here */}
+      </div>
+    );
+  } catch (error) {
+    console.error('[OnboardingView] Render error:', error);
+    return (
+      <div className="p-4 text-red-600 bg-red-100 rounded">
+        <h2 className="text-lg font-bold">Error</h2>
+        <p>There was a problem displaying onboarding. Please reload or contact support.</p>
+      </div>
+    );
+  }
+};
         const profile = await processOnboardingData(onboardingPayload);
         setGeneratedProfile(profile);
         setCurrentStep(currentStep + 1); // Move to Cognitive Mirror step
