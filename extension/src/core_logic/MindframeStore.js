@@ -46,32 +46,41 @@ export class MindframeStore {
    * @static
    */
   static getDefaultState() {
-    const defaultUserId = this._generateUUIDv4();
-    return {
-      version: MindframeStore.CURRENT_VERSION,
-      userId: defaultUserId,
-      userProfile: null,
-      onboardingProgress: {
-        currentStep: 0,
-        totalSteps: 5, // Example total steps
-      },
-      settings: {
-        analysisEnabled: true,
-        showInsightCard: true,
-        theme: 'system',
-      },
-      cognitiveProfileHistory: [],
-      gamificationData: {
-        wxp: 0,
-        level: 1,
-      },
-      activeQuestIds: [],
-      completedQuestIds: [],
-      completedDrillIds: [],
-      completedChallengeLog: [],
-      llmAnalysisCache: {},
-      lastSyncTimestamp: null,
-    };
+    try {
+      const defaultUserId = this._generateUUIDv4();
+      const state = {
+        version: MindframeStore.CURRENT_VERSION,
+        userId: defaultUserId,
+        userProfile: null,
+        onboardingProgress: {
+          currentStep: 0,
+          totalSteps: 5, // Example total steps
+        },
+        settings: {
+          analysisEnabled: true,
+          showInsightCard: true,
+          theme: 'system',
+        },
+        cognitiveProfileHistory: [],
+        gamificationData: {
+          wxp: 0,
+          level: 1,
+        },
+        activeQuestIds: [],
+        completedQuestIds: [],
+        completedDrillIds: [],
+        completedChallengeLog: [],
+        llmAnalysisCache: {},
+        lastSyncTimestamp: null,
+      };
+      // eslint-disable-next-line no-console
+      console.log('[MindframeStore.getDefaultState] Returning default state:', state);
+      return state;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[MindframeStore.getDefaultState] Error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -81,42 +90,62 @@ export class MindframeStore {
    * @static
    */
   static get() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get([MindframeStore.STORAGE_KEY], (result) => {
-        /** @type {MindframeStoreState | undefined} */
-        const storedState = result[MindframeStore.STORAGE_KEY];
-
-        if (storedState && storedState.version === MindframeStore.CURRENT_VERSION) {
-          // Ensure all default fields are present if state structure evolved
-          const defaultStateForMerge = MindframeStore.getDefaultState();
-          resolve({
-            ...defaultStateForMerge,
-            ...storedState,
-            userId: storedState.userId || defaultStateForMerge.userId, // Ensure userId exists
-            gamificationData: {
-              ...defaultStateForMerge.gamificationData,
-              ...(storedState.gamificationData || {}),
-            },
-            settings: {
-              ...defaultStateForMerge.settings,
-              ...(storedState.settings || {}),
+    // eslint-disable-next-line no-console
+    console.log('[MindframeStore.get] Fetching state from chrome.storage.local');
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.storage.local.get([MindframeStore.STORAGE_KEY], (result) => {
+          try {
+            /** @type {MindframeStoreState | undefined} */
+            const storedState = result[MindframeStore.STORAGE_KEY];
+            if (storedState && storedState.version === MindframeStore.CURRENT_VERSION) {
+              // Ensure all default fields are present if state structure evolved
+              const defaultStateForMerge = MindframeStore.getDefaultState();
+              const merged = {
+                ...defaultStateForMerge,
+                ...storedState,
+                userId: storedState.userId || defaultStateForMerge.userId, // Ensure userId exists
+                gamificationData: {
+                  ...defaultStateForMerge.gamificationData,
+                  ...(storedState.gamificationData || {}),
+                },
+                settings: {
+                  ...defaultStateForMerge.settings,
+                  ...(storedState.settings || {}),
+                }
+              };
+              // eslint-disable-next-line no-console
+              console.log('[MindframeStore.get] Returning merged state:', merged);
+              resolve(merged);
+            } else {
+              if (storedState) {
+                // eslint-disable-next-line no-console
+                console.warn(
+                  `MindframeStore: Version mismatch. Expected ${MindframeStore.CURRENT_VERSION}, found ${storedState.version}. Resetting to default.`
+                );
+              } else {
+                // eslint-disable-next-line no-console
+                console.log("MindframeStore: No existing state found. Initializing with default state.");
+              }
+              // For MVP, reset to default. In future, implement migration logic here.
+              const defaultState = MindframeStore.getDefaultState();
+              chrome.storage.local.set({ [MindframeStore.STORAGE_KEY]: defaultState }, () => {
+                // eslint-disable-next-line no-console
+                console.log('[MindframeStore.get] Default state written to storage.');
+                resolve(defaultState);
+              });
             }
-          });
-        } else {
-          if (storedState) {
-            console.warn(
-              `MindframeStore: Version mismatch. Expected ${MindframeStore.CURRENT_VERSION}, found ${storedState.version}. Resetting to default.`
-            );
-          } else {
-            console.log("MindframeStore: No existing state found. Initializing with default state.");
+          } catch (cbErr) {
+            // eslint-disable-next-line no-console
+            console.error('[MindframeStore.get] Error in callback:', cbErr);
+            reject(cbErr);
           }
-          // For MVP, reset to default. In future, implement migration logic here.
-          const defaultState = MindframeStore.getDefaultState();
-          chrome.storage.local.set({ [MindframeStore.STORAGE_KEY]: defaultState }, () => {
-            resolve(defaultState);
-          });
-        }
-      });
+        });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[MindframeStore.get] Error:', error);
+        reject(error);
+      }
     });
   }
 
@@ -128,11 +157,40 @@ export class MindframeStore {
    * @static
    */
   static update(updaterFn) {
-    return MindframeStore.get().then((currentState) => {
-      const newState = updaterFn(currentState); // The prompt specified { ...currentState, ...updaterFn(currentState) }, which is unusual.
-                                              // Standard is updaterFn receives current state and returns the new state entirely or partial to merge.
-                                              // Given the JSDoc, updaterFn should return the *new* state.
-                                              // The blueprint says: "newState = { ...currentState, ...updaterFn(currentState) }"
+    // eslint-disable-next-line no-console
+    console.log('[MindframeStore.update] Called');
+    return MindframeStore.get()
+      .then((currentState) => {
+        try {
+          const updates = updaterFn(currentState); // Assume updaterFn returns a *partial* state object.
+          const newState = { ...currentState, ...updates };
+          // eslint-disable-next-line no-console
+          console.log('[MindframeStore.update] Writing new state:', newState);
+          return new Promise((resolve, reject) => {
+            try {
+              chrome.storage.local.set({ [MindframeStore.STORAGE_KEY]: newState }, () => {
+                // eslint-disable-next-line no-console
+                console.log('[MindframeStore.update] State written successfully.');
+                resolve(newState);
+              });
+            } catch (setErr) {
+              // eslint-disable-next-line no-console
+              console.error('[MindframeStore.update] Error in storage.set:', setErr);
+              reject(setErr);
+            }
+          });
+        } catch (updateErr) {
+          // eslint-disable-next-line no-console
+          console.error('[MindframeStore.update] Error in updaterFn:', updateErr);
+          throw updateErr;
+        }
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[MindframeStore.update] Error:', err);
+        throw err;
+      });
+  }"
                                               // This implies updaterFn returns a partial state to be merged. Let's follow that.
                                               // However, the function signature `(currentState: MindframeStoreState) => MindframeStoreState` implies it returns a *complete* new state.
                                               // Re-reading: "The update function's merging logic should be newState = { ...currentState, ...updaterFn(currentState) }." This means the updater returns a PARTIAL update.
@@ -184,11 +242,20 @@ export class MindframeStore {
    * @static
    */
   static clear() {
-    return new Promise((resolve) => {
-      chrome.storage.local.remove(MindframeStore.STORAGE_KEY, () => {
-        console.log("MindframeStore cleared.");
-        resolve();
-      });
+    // eslint-disable-next-line no-console
+    console.log('[MindframeStore.clear] Called');
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.storage.local.remove(MindframeStore.STORAGE_KEY, () => {
+          // eslint-disable-next-line no-console
+          console.log("[MindframeStore.clear] MindframeStore cleared.");
+          resolve();
+        });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[MindframeStore.clear] Error:', err);
+        reject(err);
+      }
     });
   }
 }
