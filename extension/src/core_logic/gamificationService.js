@@ -29,12 +29,20 @@ export class GamificationService {
    * @static
    */
   static getLevel(wxp) {
-    for (let i = this.WXP_THRESHOLDS.length - 1; i >= 0; i--) {
-      if (wxp >= this.WXP_THRESHOLDS[i]) {
-        return i + 1; // Levels are 1-indexed (index 0 is 0 WXP for level 1)
+    try {
+      console.log(`[GamificationService.getLevel] Called with wxp: ${wxp}`);
+      for (let i = this.WXP_THRESHOLDS.length - 1; i >= 0; i--) {
+        if (wxp >= this.WXP_THRESHOLDS[i]) {
+          console.log(`[GamificationService.getLevel] Level determined: ${i + 1}`);
+          return i + 1;
+        }
       }
+      console.warn(`[GamificationService.getLevel] wxp below all thresholds. Returning level 1.`);
+      return 1;
+    } catch (error) {
+      console.error('[GamificationService.getLevel] Error:', error);
+      return 1;
     }
-    return 1; // Default to level 1 if WXP is somehow negative or thresholds are empty
   }
 
   /**
@@ -45,40 +53,42 @@ export class GamificationService {
    * @static
    */
   static async addWXP(points) {
-    const currentState = await MindframeStore.get();
-    const oldLevel = currentState.gamificationData.level;
+    console.log(`[GamificationService.addWXP] Called with points: ${points}`);
+    try {
+      const currentState = await MindframeStore.get();
+      const oldLevel = currentState.gamificationData.level;
 
-    const newWxp = currentState.gamificationData.wxp + points;
-    const newLevel = GamificationService.getLevel(newWxp);
-    const leveledUp = newLevel > oldLevel;
+      const newWxp = currentState.gamificationData.wxp + points;
+      const newLevel = GamificationService.getLevel(newWxp);
+      const leveledUp = newLevel > oldLevel;
 
-    await MindframeStore.update((state) => ({
-      ...state, // This spread is not in the prompt's example for MindframeStore.update
-                  // but it makes sense if updaterFn returns a partial update
-      gamificationData: {
-        ...state.gamificationData,
-        wxp: newWxp,
-        level: newLevel,
-      },
-    }));
-    // The prompt for MindframeStore.update says: const newState = { ...currentState, ...updates };
-    // So, updaterFn should return a partial update.
-    // Correct call to MindframeStore.update based on prompt:
-    // await MindframeStore.update(state => ({ // state here is currentState
-    //   gamificationData: { // This is the partial update object
-    //     ...state.gamificationData,
-    //     wxp: newWxp,
-    //     level: newLevel,
-    //   }
-    // }));
+      await MindframeStore.update((state) => {
+        try {
+          return {
+            ...state,
+            gamificationData: {
+              ...state.gamificationData,
+              wxp: newWxp,
+              level: newLevel,
+            },
+          };
+        } catch (err) {
+          console.error('[GamificationService.addWXP] Error in update partial:', err);
+          throw err;
+        }
+      });
 
+      if (leveledUp) {
+        console.log(`[GamificationService.addWXP] Leveled up from ${oldLevel} to ${newLevel}!`);
+      } else {
+        console.log(`[GamificationService.addWXP] No level up. NewWXP: ${newWxp}, Level: ${newLevel}`);
+      }
 
-    if (leveledUp) {
-      console.log(`Leveled up from ${oldLevel} to ${newLevel}!`);
-      // Here you could trigger notifications or other level-up events.
+      return { newWxp, newLevel, leveledUp };
+    } catch (error) {
+      console.error('[GamificationService.addWXP] Error:', error);
+      throw error;
     }
-
-    return { newWxp, newLevel, leveledUp };
   }
 
   /**
@@ -88,11 +98,20 @@ export class GamificationService {
    * @static
    */
   static getWXPForNextLevel(currentWxp) {
-    const currentLevel = GamificationService.getLevel(currentWxp);
-    if (currentLevel >= GamificationService.WXP_THRESHOLDS.length) {
-      return 0; // Max level reached or beyond defined thresholds
+    try {
+      console.log(`[GamificationService.getWXPForNextLevel] Called with currentWxp: ${currentWxp}`);
+      const currentLevel = GamificationService.getLevel(currentWxp);
+      if (currentLevel >= GamificationService.WXP_THRESHOLDS.length) {
+        console.log(`[GamificationService.getWXPForNextLevel] Max level reached.`);
+        return 0;
+      }
+      const wxpForNextLevelAbsolute = GamificationService.WXP_THRESHOLDS[currentLevel];
+      const needed = wxpForNextLevelAbsolute - currentWxp;
+      console.log(`[GamificationService.getWXPForNextLevel] WXP needed for next level: ${needed}`);
+      return needed;
+    } catch (error) {
+      console.error('[GamificationService.getWXPForNextLevel] Error:', error);
+      return 0;
     }
-    const wxpForNextLevelAbsolute = GamificationService.WXP_THRESHOLDS[currentLevel]; // Threshold to *reach* next level (level currentLevel+1)
-    return wxpForNextLevelAbsolute - currentWxp;
   }
 }

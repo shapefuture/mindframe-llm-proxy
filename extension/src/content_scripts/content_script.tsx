@@ -47,39 +47,51 @@ function unmountInsightCard() {
 }
 
 function displayInsightCard(insightData: UiInsight) {
-  ensureMindframeContainer();
-  if (mindframeRoot) {
-    console.log("Mindframe CS: Displaying InsightCard with data:", insightData);
-    mindframeRoot.render(
-      <React.StrictMode>
-        <InsightCard
-          insight={insightData}
-          onAccept={(challengePrompt, hcRelated) => {
-            console.log("Mindframe CS: Challenge Accepted from Card:", challengePrompt, hcRelated);
-            chrome.runtime.sendMessage({
-              action: 'coPilotChallengeAccepted',
-              payload: {
-                challengePrompt,
-                hcRelated: hcRelated || null,
+  try {
+    ensureMindframeContainer();
+    if (mindframeRoot) {
+      console.log("[Mindframe CS] Displaying InsightCard with data:", insightData);
+      mindframeRoot.render(
+        <React.StrictMode>
+          <InsightCard
+            insight={insightData}
+            onAccept={(challengePrompt, hcRelated) => {
+              try {
+                console.log("[Mindframe CS] Challenge Accepted from Card:", challengePrompt, hcRelated);
+                chrome.runtime.sendMessage({
+                  action: 'coPilotChallengeAccepted',
+                  payload: {
+                    challengePrompt,
+                    hcRelated: hcRelated || null,
+                  }
+                }).catch(error => console.error("[Mindframe CS] Error sending coPilotChallengeAccepted message:", error));
+              } catch (err) {
+                console.error("[Mindframe CS] Error in onAccept handler:", err);
               }
-            }).catch(error => console.error("Mindframe CS: Error sending coPilotChallengeAccepted message:", error));
-            // setTimeout(unmountInsightCard, 3000); // Dismiss after 3s
-          }}
-          onDismiss={() => {
-            console.log("Mindframe CS: Insight Dismissed from Card.");
-            unmountInsightCard();
-          }}
-        />
-      </React.StrictMode>
-    );
-  } else {
-    console.error("Mindframe CS: mindframeRoot not available to display InsightCard.");
+              // setTimeout(unmountInsightCard, 3000); // Dismiss after 3s
+            }}
+            onDismiss={() => {
+              try {
+                console.log("[Mindframe CS] Insight Dismissed from Card.");
+                unmountInsightCard();
+              } catch (err) {
+                console.error("[Mindframe CS] Error in onDismiss handler:", err);
+              }
+            }}
+          />
+        </React.StrictMode>
+      );
+    } else {
+      console.error("[Mindframe CS] mindframeRoot not available to display InsightCard.");
+    }
+  } catch (error) {
+    console.error("[Mindframe CS] Error in displayInsightCard:", error);
   }
 }
 
 function highlightPageElements(selector: string) {
-  console.log(`Mindframe CS: Attempting to highlight elements with selector: '${selector}'`);
   try {
+    console.log(`[Mindframe CS] Attempting to highlight elements with selector: '${selector}'`);
     document.querySelectorAll('.mindframe-highlight').forEach(el => {
       (el as HTMLElement).style.outline = '';
       (el as HTMLElement).style.boxShadow = '';
@@ -88,7 +100,7 @@ function highlightPageElements(selector: string) {
 
     const elements = document.querySelectorAll(selector);
     if (elements.length > 0) {
-      console.log(`Mindframe CS: Found ${elements.length} elements to highlight.`);
+      console.log(`[Mindframe CS] Found ${elements.length} elements to highlight.`);
       elements.forEach(el => {
         const htmlEl = el as HTMLElement;
         htmlEl.classList.add('mindframe-highlight'); 
@@ -97,19 +109,23 @@ function highlightPageElements(selector: string) {
         htmlEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       setTimeout(() => {
-        elements.forEach(el => {
-          const htmlEl = el as HTMLElement;
-          htmlEl.style.outline = '';
-          htmlEl.style.boxShadow = '';
-          htmlEl.classList.remove('mindframe-highlight');
-        });
-        console.log(`Mindframe CS: Removed highlight from elements.`);
+        try {
+          elements.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.outline = '';
+            htmlEl.style.boxShadow = '';
+            htmlEl.classList.remove('mindframe-highlight');
+          });
+          console.log(`[Mindframe CS] Removed highlight from elements.`);
+        } catch (timeoutErr) {
+          console.error("[Mindframe CS] Error in highlightPageElements timeout cleanup:", timeoutErr);
+        }
       }, 7000);
     } else {
-      console.warn(`Mindframe CS: No elements found for selector: '${selector}'`);
+      console.warn(`[Mindframe CS] No elements found for selector: '${selector}'`);
     }
   } catch (e) {
-    console.error("Mindframe CS: Error highlighting elements:", e);
+    console.error("[Mindframe CS] Error highlighting elements:", e);
   }
 }
 
@@ -265,42 +281,56 @@ class ContinuousContextMonitor {
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    console.log("Mindframe CS: DOMContentLoaded, initializing CCM.");
-    new ContinuousContextMonitor();
+    try {
+      console.log("[Mindframe CS] DOMContentLoaded, initializing CCM.");
+      new ContinuousContextMonitor();
+    } catch (err) {
+      console.error("[Mindframe CS] Error initializing CCM on DOMContentLoaded:", err);
+    }
   });
 } else {
-  console.log("Mindframe CS: DOM already loaded, initializing CCM.");
-  new ContinuousContextMonitor();
+  try {
+    console.log("[Mindframe CS] DOM already loaded, initializing CCM.");
+    new ContinuousContextMonitor();
+  } catch (err) {
+    console.error("[Mindframe CS] Error initializing CCM:", err);
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Mindframe CS: Received message from runtime:", message);
-  if (message.action === 'showMindframeCoPilotInsight' && message.insightData) {
-    if (message.insightData.pattern_type !== 'none' || message.insightData.hc_related !== null) {
-        const uiInsight: UiInsight = {
-            id: message.insightData.id || Date.now().toString(),
-            title: message.insightData.title || (message.insightData.pattern_type !== 'none' ? `Pattern: ${message.insightData.pattern_type}` : 'Mindframe Tip'),
-            sourceType: message.insightData.sourceType || 'llm',
-            hc_related: message.insightData.hc_related,
-            explanation: message.insightData.explanation,
-            micro_challenge_prompt: message.insightData.micro_challenge_prompt,
-            highlight_suggestion_css_selector: message.insightData.highlight_suggestion_css_selector,
-            original_text_segment: message.insightData.original_text_segment,
-            timestamp: message.insightData.timestamp || Date.now(),
-        };
-        console.log("Mindframe CS: Processing 'showMindframeCoPilotInsight' action.");
-        displayInsightCard(uiInsight);
-        sendResponse({ status: 'Insight display attempt initiated.' });
-    } else {
-        console.log("Mindframe CS: Insight data has 'none' pattern and no hc_related, skipping display.");
-        sendResponse({ status: 'Insight skipped (none pattern).' });
+  try {
+    console.log("[Mindframe CS] Received message from runtime:", message);
+    if (message.action === 'showMindframeCoPilotInsight' && message.insightData) {
+      if (message.insightData.pattern_type !== 'none' || message.insightData.hc_related !== null) {
+          const uiInsight: UiInsight = {
+              id: message.insightData.id || Date.now().toString(),
+              title: message.insightData.title || (message.insightData.pattern_type !== 'none' ? `Pattern: ${message.insightData.pattern_type}` : 'Mindframe Tip'),
+              sourceType: message.insightData.sourceType || 'llm',
+              hc_related: message.insightData.hc_related,
+              explanation: message.insightData.explanation,
+              micro_challenge_prompt: message.insightData.micro_challenge_prompt,
+              highlight_suggestion_css_selector: message.insightData.highlight_suggestion_css_selector,
+              original_text_segment: message.insightData.original_text_segment,
+              timestamp: message.insightData.timestamp || Date.now(),
+          };
+          console.log("[Mindframe CS] Processing 'showMindframeCoPilotInsight' action.");
+          displayInsightCard(uiInsight);
+          sendResponse({ status: 'Insight display attempt initiated.' });
+      } else {
+          console.log("[Mindframe CS] Insight data has 'none' pattern and no hc_related, skipping display.");
+          sendResponse({ status: 'Insight skipped (none pattern).' });
+      }
+    } else if (message.action === 'applyHighlightOnPage' && message.selector) {
+      console.log("[Mindframe CS] Processing 'applyHighlightOnPage' action.");
+      highlightPageElements(message.selector);
+      sendResponse({ status: 'Highlight attempted on page.' });
     }
-  } else if (message.action === 'applyHighlightOnPage' && message.selector) {
-    console.log("Mindframe CS: Processing 'applyHighlightOnPage' action.");
-    highlightPageElements(message.selector);
-    sendResponse({ status: 'Highlight attempted on page.' });
+    // Keep message channel open for async response if needed by other handlers, though current ones respond sync.
+    // Return true only if you intend to use sendResponse asynchronously.
+    return true; 
+  } catch (err) {
+    console.error("[Mindframe CS] Error in onMessage handler:", err);
+    sendResponse({ status: 'error', error: err?.message || String(err) });
+    return false;
   }
-  // Keep message channel open for async response if needed by other handlers, though current ones respond sync.
-  // Return true only if you intend to use sendResponse asynchronously.
-  return true; 
 });

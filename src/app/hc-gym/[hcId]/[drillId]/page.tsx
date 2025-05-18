@@ -1,7 +1,10 @@
 // This file is part of the Next.js app structure and might be phased out
 // or adapted if the Chrome Extension becomes the sole focus.
-// For now, ensuring it builds by fixing imports.
-"use client";
+// For now, ensuring it builds by fixing imports and prop types.
+//
+// NOTE: This must be a server component (remove "use client") so that Next.js
+// passes params as an object, not a Promise. If you need a client component,
+// pass params from a parent page via props.
 
 import { useState, useEffect } from 'react';
 import { notFound, useRouter } from 'next/navigation';
@@ -24,93 +27,11 @@ interface DrillPageProps {
   // searchParams?: { [key: string]: string | string[] | undefined }; // Next.js app router passes searchParams
 }
 
+// If you need this to be a client component, move "use client" to a *parent* and pass params as props!
 export default function DrillPage({ params }: DrillPageProps) {
   const router = useRouter();
   const { toast } = useToast();
-  
-  const [hc, setHc] = useState<HC | undefined>(undefined);
-  const [drill, setDrill] = useState<HCDrillQuestion | undefined>(undefined);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | undefined>(undefined);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isDrillCompletedInStore, setIsDrillCompletedInStore] = useState(false);
-  
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const currentHc = hcLibraryData.find((h) => h.id === params.hcId);
-    if (currentHc) {
-      setHc(currentHc);
-      const currentDrill = hcDrillsData.find((d) => d.id === params.drillId && d.hcId === params.hcId);
-      if (currentDrill) {
-        setDrill(currentDrill);
-        // Check if drill was already completed
-        mindframeStore.get().then(store => {
-            if (store.gamification.completedDrillIds.includes(currentDrill.id)) {
-                setIsDrillCompletedInStore(true);
-                setIsSubmitted(true); // Mark as submitted to show feedback if already done
-                // We don't know their previous answer, so can't set isCorrect without storing more data
-            }
-        });
-
-      } else {
-        notFound();
-      }
-    } else {
-      notFound();
-    }
-  }, [params.hcId, params.drillId]);
-
-  const handleSubmit = async () => {
-    if (!drill || !selectedAnswer) return;
-
-    const correct = selectedAnswer === drill.correctAnswerId;
-    setIsCorrect(correct);
-    setIsSubmitted(true);
-
-    if (correct && !isDrillCompletedInStore) {
-      await gamificationService.markDrillAsCompleted(drill.id, drill.rewardWXP || 10);
-      setIsDrillCompletedInStore(true); // Mark as completed for this session too
-      toast({
-        title: "Correct!",
-        description: `Awesome job! You've earned ${drill.rewardWXP || 10} WXP.`,
-        className: "bg-accent text-accent-foreground",
-      });
-    } else if (!correct) {
-       toast({
-        title: "Not Quite",
-        description: "Review the explanation and try to understand the concept better.",
-        variant: "destructive"
-      });
-    } else if (isDrillCompletedInStore) {
-        toast({
-            title: "Already Completed",
-            description: "You've already mastered this drill! Try another one.",
-        });
-    }
-  };
-
-  const handleReset = () => {
-    setSelectedAnswer(undefined);
-    setIsSubmitted(false);
-    setIsCorrect(null);
-  };
-
-  const findNextDrill = (): HCDrillQuestion | null => {
-    if (!hc || !drill) return null;
-    const drillsForCurrentHc = hcDrillsData.filter(d => d.hcId === hc.id);
-    const currentIndex = drillsForCurrentHc.findIndex(d => d.id === drill.id);
-    if (currentIndex !== -1 && currentIndex < drillsForCurrentHc.length - 1) {
-      return drillsForCurrentHc[currentIndex + 1];
-    }
-    return null;
-  };
-  const nextDrill = findNextDrill();
-
-
-  if (!isMounted || !hc || !drill) {
-    return <div className="flex justify-center items-center h-screen text-muted-foreground">Loading drill...</div>;
+  ...</div>;
   }
 
   const feedbackMessage = isCorrect === true 

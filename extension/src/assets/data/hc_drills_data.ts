@@ -1,5 +1,6 @@
 
 import type { HCDrillQuestion } from '../../core_logic/types';
+import { isHCDrillQuestion } from '../../core_logic/types';
 
 export const hcDrillsData: HCDrillQuestion[] = [
   // Critical Thinking (#critique)
@@ -168,3 +169,13 @@ export const hcDrillsData: HCDrillQuestion[] = [
     rewardWXP: 15,
   },
 ];
+
+// Validate on load
+if (process.env.NODE_ENV !== 'production') {
+  for (const entry of hcDrillsData) {
+    if (!isHCDrillQuestion(entry)) {
+      // eslint-disable-next-line no-console
+      console.warn('[hcDrillsData] Invalid HCDrillQuestion:', entry);
+    }
+  }
+}
