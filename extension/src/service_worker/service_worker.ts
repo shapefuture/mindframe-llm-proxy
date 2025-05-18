@@ -157,55 +157,54 @@ function sendInsightToContentScript(tabId: number, insight: UiInsight) {
 // --- Core Logic ---
 async function handleAnalyzeText(payload: { visibleText: string; pageUrl: string }, senderTabId: number) {
   const { visibleText, pageUrl } = payload;
-  console.log(`Mindframe SW: handleAnalyzeText called for Tab ID ${senderTabId}, URL: ${pageUrl}, Text length: ${visibleText.length}`);
-  
+  console.log(`[handleAnalyzeText] Called for Tab ID ${senderTabId}, URL: ${pageUrl}, Text length: ${visibleText.length}`);
+
   let storeState: MindframeStoreState;
   let userProfile: CognitiveProfileV1 | null;
 
   try {
     storeState = await MindframeStore.get();
     if (!storeState) {
-        console.error("Mindframe SW: Failed to get store state (MindframeStore.get() returned null). Aborting analysis.");
-        sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
-        return { status: "error_store_fetch_null", error: "MindframeStore.get() returned null" };
+      console.error("[handleAnalyzeText] Failed to get store state (MindframeStore.get() returned null). Aborting analysis.");
+      sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
+      return { status: "error_store_fetch_null", error: "MindframeStore.get() returned null" };
     }
     userProfile = storeState.userProfile;
   } catch (e: any) {
-    console.error("Mindframe SW: Error fetching store state:", e.message, e);
+    console.error("[handleAnalyzeText] Error fetching store state:", e.message, e);
     sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
     return { status: "error_store_fetch", error: e.message };
   }
 
   if (!userProfile || !userProfile.onboardingCompletedTimestamp) {
-    console.log("Mindframe SW: User has not completed onboarding. Skipping analysis. Profile:", userProfile);
+    console.log("[handleAnalyzeText] User has not completed onboarding. Skipping analysis. Profile:", userProfile);
     return { status: "onboarding_incomplete" };
   }
-  
+
   if (!storeState.settings || !storeState.settings.analysisEnabled) {
-      console.log("Mindframe SW: Analysis is disabled by user settings. Skipping analysis. Settings:", storeState.settings);
-      return { status: "analysis_disabled" };
+    console.log("[handleAnalyzeText] Analysis is disabled by user settings. Skipping analysis. Settings:", storeState.settings);
+    return { status: "analysis_disabled" };
   }
 
   const cacheKey = hashString(visibleText + (userProfile.primaryGoal || '') + pageUrl);
   const cachedEntry = storeState.llmAnalysisCache?.[cacheKey];
 
   if (cachedEntry && (Date.now() - cachedEntry.timestamp < INSIGHT_CACHE_TTL_MS)) {
-    console.log("Mindframe SW: Returning cached insight for key:", cacheKey, cachedEntry);
-    const uiInsight: UiInsight = { 
-        ...cachedEntry.insight, 
-        sourceType: 'llm', 
-        title: `Pattern: ${cachedEntry.insight.pattern_type === 'none' ? 'General Reflection' : cachedEntry.insight.pattern_type}`, 
-        id: cacheKey,
-        timestamp: cachedEntry.timestamp
+    console.log("[handleAnalyzeText] Returning cached insight for key:", cacheKey, cachedEntry);
+    const uiInsight: UiInsight = {
+      ...cachedEntry.insight,
+      sourceType: 'llm',
+      title: `Pattern: ${cachedEntry.insight.pattern_type === 'none' ? 'General Reflection' : cachedEntry.insight.pattern_type}`,
+      id: cacheKey,
+      timestamp: cachedEntry.timestamp
     };
     sendInsightToContentScript(senderTabId, uiInsight);
     return { status: "success_cached", insight: cachedEntry.insight };
   }
-  console.log("Mindframe SW: Cache miss or stale for key:", cacheKey);
-
+  console.log("[handleAnalyzeText] Cache miss or stale for key:", cacheKey);
 
   if (!navigator.onLine) {
-    console.log("Mindframe SW: Offline. Sending offline insight.");
+    console.log("[handleAnalyzeText] Offline. Sending offline insight.");
     sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
     return { status: "offline_fallback" };
   }
@@ -213,64 +212,64 @@ async function handleAnalyzeText(payload: { visibleText: string; pageUrl: string
   // No need for this check anymore, as invalid config will now throw on startup
 
   try {
-    console.log("Mindframe SW: Calling LLM proxy for new analysis. URL:", LLM_PROXY_URL);
+    console.log("[handleAnalyzeText] Calling LLM proxy for new analysis. URL:", LLM_PROXY_URL);
     const proxyResponse = await fetch(LLM_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        textSegment: visibleText.substring(0,2000), // Ensure text segment limit
+        textSegment: visibleText.substring(0, 2000),
         userGoal: userProfile.primaryGoal || "general cognitive improvement",
       }),
     });
 
     if (!proxyResponse.ok) {
       const errorText = await proxyResponse.text();
-      console.error(`Mindframe SW: LLM Proxy Error: ${proxyResponse.status} ${proxyResponse.statusText}. Details: ${errorText}`);
+      console.error(`[handleAnalyzeText] LLM Proxy Error: ${proxyResponse.status} ${proxyResponse.statusText}. Details: ${errorText}`);
       throw new Error(`LLM Proxy Error: ${proxyResponse.status} ${proxyResponse.statusText}. Details: ${errorText}`);
     }
 
     const xmlText = await proxyResponse.text();
-    console.log("Mindframe SW: Received XML text from proxy:", xmlText.substring(0, 500) + "...");
+    console.log("[handleAnalyzeText] Received XML text from proxy:", xmlText.substring(0, 500) + "...");
     const llmInsight = parseXMLResponse(xmlText);
 
     if (llmInsight) {
-      console.log("Mindframe SW: LLM Insight parsed:", llmInsight);
+      console.log("[handleAnalyzeText] LLM Insight parsed:", llmInsight);
       if (llmInsight.pattern_type !== 'none' || llmInsight.hc_related !== null) {
-        console.log("Mindframe SW: Caching new LLM insight for key:", cacheKey);
+        console.log("[handleAnalyzeText] Caching new LLM insight for key:", cacheKey);
         try {
-            await MindframeStore.update((current: MindframeStoreState) => ({
-              ...current, 
-              llmAnalysisCache: {
-                ...(current.llmAnalysisCache || {}), 
-                [cacheKey]: { insight: llmInsight, timestamp: Date.now() },
-              },
-            }));
-            console.log("Mindframe SW: LLM insight cached successfully.");
+          await MindframeStore.update((current: MindframeStoreState) => ({
+            ...current,
+            llmAnalysisCache: {
+              ...(current.llmAnalysisCache || {}),
+              [cacheKey]: { insight: llmInsight, timestamp: Date.now() },
+            },
+          }));
+          console.log("[handleAnalyzeText] LLM insight cached successfully.");
         } catch (storeError: any) {
-            console.error("Mindframe SW: Error updating MindframeStore with new cache entry:", storeError.message, storeError);
+          console.error("[handleAnalyzeText] Error updating MindframeStore with new cache entry:", storeError.message, storeError);
         }
       }
-      const uiInsight: UiInsight = { 
-          ...llmInsight, 
-          sourceType: 'llm', 
-          title: `Pattern: ${llmInsight.pattern_type === 'none' ? 'General Reflection' : llmInsight.pattern_type}`, 
-          id: cacheKey,
-          timestamp: Date.now()
+      const uiInsight: UiInsight = {
+        ...llmInsight,
+        sourceType: 'llm',
+        title: `Pattern: ${llmInsight.pattern_type === 'none' ? 'General Reflection' : llmInsight.pattern_type}`,
+        id: cacheKey,
+        timestamp: Date.now()
       };
       sendInsightToContentScript(senderTabId, uiInsight);
       if (llmInsight.highlight_suggestion_css_selector) {
-        console.log("Mindframe SW: Requesting content script to highlight selector:", llmInsight.highlight_suggestion_css_selector);
-        chrome.tabs.sendMessage(senderTabId, {action: 'applyHighlightOnPage', selector: llmInsight.highlight_suggestion_css_selector})
-            .catch(e => console.warn("Mindframe SW: Failed to send highlight message to content script:", e.message));
+        console.log("[handleAnalyzeText] Requesting content script to highlight selector:", llmInsight.highlight_suggestion_css_selector);
+        chrome.tabs.sendMessage(senderTabId, { action: 'applyHighlightOnPage', selector: llmInsight.highlight_suggestion_css_selector })
+          .catch(e => console.warn("[handleAnalyzeText] Failed to send highlight message to content script:", e.message));
       }
       return { status: "success_live", insight: llmInsight };
     } else {
-      console.warn("Mindframe SW: LLM response parsing failed. Sending offline insight as fallback. XML was:", xmlText);
+      console.warn("[handleAnalyzeText] LLM response parsing failed. Sending offline insight as fallback. XML was:", xmlText);
       sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
       return { status: "parse_error_fallback" };
     }
   } catch (error: any) {
-    console.error("Mindframe SW: Error during LLM analysis or proxy call:", error.message, error);
+    console.error("[handleAnalyzeText] Error during LLM analysis or proxy call:", error.message, error);
     sendInsightToContentScript(senderTabId, getRandomOfflineInsight());
     return { status: "error_fallback", error: error.message };
   }
