@@ -1,0 +1,4 @@
+// This file is specific to ShadCN UI with Next.js RSC.
+// For a Vite project, ShadCN components would be added differently if used.
+// The current blueprint does not specify ShadCN directly for the Vite popup,
+// focusing on Tailwind CSS for styling.
