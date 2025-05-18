@@ -49,6 +49,23 @@ export interface HCDrillOption {
 }
 
 /**
+ * Runtime type guard for HCDrillOption.
+ * @param obj - The object to check.
+ * @returns True if the object is HCDrillOption.
+ */
+export function isHCDrillOption(obj: any): obj is HCDrillOption {
+  const valid =
+    !!obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.text === 'string';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isHCDrillOption] Invalid HCDrillOption:', obj);
+  }
+  return valid;
+}
+
+/**
  * Represents a Multiple Choice Question for HC Drills.
  */
 export interface HCDrillQuestion {
@@ -61,6 +78,31 @@ export interface HCDrillQuestion {
   explanationOnCorrect: string;
   explanationOnIncorrect: string;
   rewardWXP: number; // WXP points awarded for completion
+}
+
+/**
+ * Runtime type guard for HCDrillQuestion.
+ * @param obj - The object to check.
+ * @returns True if the object is HCDrillQuestion.
+ */
+export function isHCDrillQuestion(obj: any): obj is HCDrillQuestion {
+  const valid =
+    !!obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.hcId === 'string' &&
+    typeof obj.name === 'string' &&
+    typeof obj.questionText === 'string' &&
+    Array.isArray(obj.options) &&
+    obj.options.every(isHCDrillOption) &&
+    typeof obj.correctAnswerId === 'string' &&
+    typeof obj.explanationOnCorrect === 'string' &&
+    typeof obj.explanationOnIncorrect === 'string' &&
+    typeof obj.rewardWXP === 'number';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isHCDrillQuestion] Invalid HCDrillQuestion:', obj);
+  }
+  return valid;
 }
 
 /**
