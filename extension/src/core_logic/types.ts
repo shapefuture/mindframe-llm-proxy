@@ -18,6 +18,29 @@ export interface HCData {
 }
 
 /**
+ * Type guard for HCData at runtime.
+ * @param obj - The object to check.
+ * @returns True if the object is HCData.
+ */
+export function isHCData(obj: any): obj is HCData {
+  const valid = !!obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.tag === 'string' &&
+    typeof obj.name === 'string' &&
+    (typeof obj.icon === 'string' || typeof obj.icon === 'function' || typeof obj.icon === 'object') &&
+    typeof obj.description === 'string' &&
+    typeof obj.longDescription === 'string' &&
+    Array.isArray(obj.keySkills) &&
+    Array.isArray(obj.examples) &&
+    typeof obj.shortTip === 'string';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isHCData] Invalid HCData:', obj);
+  }
+  return valid;
+}
+
+/**
  * Represents an option for an HC Drill Question.
  */
 export interface HCDrillOption {
@@ -94,6 +117,27 @@ export interface CognitiveProfileV1 {
   /** Map of HC IDs to user's self-rated proficiency (0-5). */
   hcProficiency: { [hcId: string]: number };
   onboardingCompletedTimestamp: number;
+}
+
+/**
+ * Type guard for CognitiveProfileV1 at runtime.
+ * @param obj - The object to check.
+ * @returns True if the object is CognitiveProfileV1.
+ */
+export function isCognitiveProfileV1(obj: any): obj is CognitiveProfileV1 {
+  const valid = !!obj &&
+    obj.version === 1 &&
+    typeof obj.userId === 'string' &&
+    typeof obj.primaryGoal === 'string' &&
+    Array.isArray(obj.interests) &&
+    typeof obj.potentialBiases === 'object' &&
+    typeof obj.hcProficiency === 'object' &&
+    typeof obj.onboardingCompletedTimestamp === 'number';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isCognitiveProfileV1] Invalid CognitiveProfileV1:', obj);
+  }
+  return valid;
 }
 
 // --- Gamification & Quest Types ---
@@ -216,4 +260,24 @@ export interface MindframeStoreState {
     };
   };
   lastSyncTimestamp: number | null; // For potential future cloud sync
+}
+
+/**
+ * Type guard for MindframeStoreState at runtime.
+ * @param obj - The object to check.
+ * @returns True if the object is MindframeStoreState.
+ */
+export function isMindframeStoreState(obj: any): obj is MindframeStoreState {
+  const valid = !!obj &&
+    typeof obj.version === 'number' &&
+    ('userId' in obj) &&
+    ('settings' in obj) &&
+    'gamificationData' in obj &&
+    Array.isArray(obj.activeQuestIds) &&
+    Array.isArray(obj.completedDrillIds);
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isMindframeStoreState] Invalid MindframeStoreState:', obj);
+  }
+  return valid;
 }
