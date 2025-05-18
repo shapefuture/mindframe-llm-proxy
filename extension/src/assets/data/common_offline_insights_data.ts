@@ -1,6 +1,8 @@
 
 import type { OfflineInsight } from '../../core_logic/types';
+import { isHCData } from '../../core_logic/types';
 
+// Runtime validation and logging for data integrity
 export const commonOfflineInsightsData: OfflineInsight[] = [
   {
     id: 'offline_tip_01',
@@ -38,3 +40,17 @@ export const commonOfflineInsightsData: OfflineInsight[] = [
     micro_challenge_prompt: "For the next claim you encounter, try to find at least two pieces of evidence.",
   },
 ];
+
+// Validate on load
+if (process.env.NODE_ENV !== 'production') {
+  for (const entry of commonOfflineInsightsData) {
+    if (!entry.id || typeof entry.id !== 'string' ||
+        typeof entry.pattern_type !== 'string' ||
+        typeof entry.explanation !== 'string' ||
+        typeof entry.micro_challenge_prompt !== 'string'
+    ) {
+      // eslint-disable-next-line no-console
+      console.warn('[commonOfflineInsightsData] Invalid OfflineInsight entry:', entry);
+    }
+  }
+}
