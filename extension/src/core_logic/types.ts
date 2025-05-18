@@ -63,6 +63,46 @@ export interface HCDrillQuestion {
   rewardWXP: number; // WXP points awarded for completion
 }
 
+/**
+ * Type guard for HCDrillOption at runtime.
+ * @param obj - The object to check.
+ * @returns True if the object is HCDrillOption.
+ */
+export function isHCDrillOption(obj: any): obj is HCDrillOption {
+  const valid = !!obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.text === 'string';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isHCDrillOption] Invalid HCDrillOption:', obj);
+  }
+  return valid;
+}
+
+/**
+ * Type guard for HCDrillQuestion at runtime.
+ * @param obj - The object to check.
+ * @returns True if the object is HCDrillQuestion.
+ */
+export function isHCDrillQuestion(obj: any): obj is HCDrillQuestion {
+  const valid = !!obj &&
+    typeof obj.id === 'string' &&
+    typeof obj.hcId === 'string' &&
+    typeof obj.name === 'string' &&
+    typeof obj.questionText === 'string' &&
+    Array.isArray(obj.options) &&
+    obj.options.every(isHCDrillOption) &&
+    typeof obj.correctAnswerId === 'string' &&
+    typeof obj.explanationOnCorrect === 'string' &&
+    typeof obj.explanationOnIncorrect === 'string' &&
+    typeof obj.rewardWXP === 'number';
+  if (!valid) {
+    // eslint-disable-next-line no-console
+    console.warn('[typeguard:isHCDrillQuestion] Invalid HCDrillQuestion:', obj);
+  }
+  return valid;
+}
+
 // --- Situational Judgement Test (SJT) Types ---
 /**
  * Represents an option within an SJT scenario.
